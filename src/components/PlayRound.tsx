@@ -23,12 +23,13 @@ interface Props {
   videoEnabled: boolean
   onToggleAudio: () => void
   onToggleVideo: () => void
+  onRequestPermission: () => void
 }
 
 export default function PlayRound({
   word, amDescriber, timeLeft, roundCorrect, roundSkipped, onSkip, onGuess, onClue, guesses,
   localStream, remoteStreams, activeSpeaker, describerId, myId, players,
-  audioEnabled, videoEnabled, onToggleAudio, onToggleVideo,
+  audioEnabled, videoEnabled, onToggleAudio, onToggleVideo, onRequestPermission,
 }: Props) {
   const timerClass = timeLeft <= 10 ? 'timer danger' : timeLeft <= 20 ? 'timer warning' : 'timer'
   const amOnCurrentTeam = players.find(p => p.id === myId)?.team === players.find(p => p.id === describerId)?.team
@@ -46,6 +47,7 @@ export default function PlayRound({
         videoEnabled={videoEnabled}
         onToggleAudio={onToggleAudio}
         onToggleVideo={onToggleVideo}
+        onRequestPermission={onRequestPermission}
       />
 
       <div className="play-header">

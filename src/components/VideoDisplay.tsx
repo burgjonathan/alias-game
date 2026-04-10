@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Player, TEAM_COLORS } from '../App'
+import { useEffect, useRef, useCallback } from 'react'
+import { Player } from '../App'
 
 interface Props {
   localStream: MediaStream | null
@@ -12,6 +12,7 @@ interface Props {
   videoEnabled: boolean
   onToggleAudio: () => void
   onToggleVideo: () => void
+  onRequestPermission: () => void
 }
 
 function VideoTile({ stream, muted, label, highlight }: {
@@ -42,16 +43,56 @@ function VideoTile({ stream, muted, label, highlight }: {
   )
 }
 
+function useLongPress(onLongPress: () => void, onClick: () => void, ms = 600) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const firedRef = useRef(false)
+
+  const start = useCallback(() => {
+    firedRef.current = false
+    timerRef.current = setTimeout(() => {
+      firedRef.current = true
+      onLongPress()
+    }, ms)
+  }, [onLongPress, ms])
+
+  const end = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    if (!firedRef.current) {
+      onClick()
+    }
+  }, [onClick])
+
+  const cancel = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  return {
+    onMouseDown: start,
+    onMouseUp: end,
+    onMouseLeave: cancel,
+    onTouchStart: start,
+    onTouchEnd: end,
+    onTouchCancel: cancel,
+  }
+}
+
 export default function VideoDisplay({
   localStream, remoteStreams, activeSpeaker, describerId, myId, players,
-  audioEnabled, videoEnabled, onToggleAudio, onToggleVideo,
+  audioEnabled, videoEnabled, onToggleAudio, onToggleVideo, onRequestPermission,
 }: Props) {
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name ?? '?'
 
-  // Determine which 2 tiles to show: describer + active speaker
+  const micPress = useLongPress(onRequestPermission, onToggleAudio)
+  const camPress = useLongPress(onRequestPermission, onToggleVideo)
+
   const tiles: { id: string; stream: MediaStream | null; label: string; muted: boolean; highlight: boolean }[] = []
 
-  // Always show describer
   if (describerId) {
     const isMe = describerId === myId
     tiles.push({
@@ -63,7 +104,6 @@ export default function VideoDisplay({
     })
   }
 
-  // Show active speaker if different from describer
   if (activeSpeaker && activeSpeaker !== describerId) {
     const isMe = activeSpeaker === myId
     tiles.push({
@@ -75,7 +115,6 @@ export default function VideoDisplay({
     })
   }
 
-  // If no active speaker, show self (if not already shown as describer)
   if (tiles.length < 2 && !tiles.some(t => t.id === myId)) {
     tiles.push({
       id: myId,
@@ -102,13 +141,15 @@ export default function VideoDisplay({
       <div className="video-controls">
         <button
           className={`video-control-btn ${!audioEnabled ? 'off' : ''}`}
-          onClick={onToggleAudio}
+          {...micPress}
+          onClick={undefined}
         >
           {audioEnabled ? '🎤' : '🔇'}
         </button>
         <button
           className={`video-control-btn ${!videoEnabled ? 'off' : ''}`}
-          onClick={onToggleVideo}
+          {...camPress}
+          onClick={undefined}
         >
           {videoEnabled ? '📹' : '📷'}
         </button>

@@ -234,5 +234,42 @@ export function useWebRTC(socket: Socket, playerIds: string[], myId: string | un
     setVideoEnabled(prev => !prev)
   }, [])
 
-  return { localStream, remoteStreams, activeSpeaker, audioEnabled, videoEnabled, toggleAudio, toggleVideo }
+  // Re-request camera+mic permissions (e.g. after user denied initially)
+  const requestPermission = useCallback(async () => {
+    // Stop old tracks
+    localStreamRef.current?.getTracks().forEach(t => t.stop())
+    localStreamRef.current = null
+    setLocalStream(null)
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+      localStreamRef.current = stream
+      setLocalStream(stream)
+      setAudioEnabled(true)
+      setVideoEnabled(true)
+
+      // Replace tracks on existing peer connections
+      peersRef.current.forEach(pc => {
+        const senders = pc.getSenders()
+        stream.getTracks().forEach(track => {
+          const sender = senders.find(s => s.track?.kind === track.kind)
+          if (sender) {
+            sender.replaceTrack(track)
+          } else {
+            pc.addTrack(track, stream)
+          }
+        })
+      })
+    } catch {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        localStreamRef.current = stream
+        setLocalStream(stream)
+        setAudioEnabled(true)
+        setVideoEnabled(false)
+      } catch {}
+    }
+  }, [])
+
+  return { localStream, remoteStreams, activeSpeaker, audioEnabled, videoEnabled, toggleAudio, toggleVideo, requestPermission }
 }

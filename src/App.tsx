@@ -200,6 +200,7 @@ function App() {
           videoEnabled={webrtc.videoEnabled}
           onToggleAudio={webrtc.toggleAudio}
           onToggleVideo={webrtc.toggleVideo}
+          onRequestPermission={webrtc.requestPermission}
         />
       )}
       {room.phase === 'summary' && (
