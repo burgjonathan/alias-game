@@ -138,7 +138,7 @@ export function getTeamPlayers(room: Room, team: 0 | 1): Player[] {
 export function canStartGame(room: Room): boolean {
   const team0 = getTeamPlayers(room, 0)
   const team1 = getTeamPlayers(room, 1)
-  return team0.length >= 1 && team1.length >= 1
+  return team0.length >= 2 && team1.length >= 2
 }
 
 export function startGame(room: Room): void {

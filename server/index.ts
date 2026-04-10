@@ -144,7 +144,7 @@ io.on('connection', (socket) => {
     const room = getRoom(roomId)
     if (!room || room.host !== socket.id) return
     if (!canStartGame(room)) {
-      socket.emit('error-msg', { message: 'צריך לפחות שחקן אחד בכל קבוצה' })
+      socket.emit('error-msg', { message: 'צריך לפחות 2 שחקנים בכל קבוצה' })
       return
     }
     startGame(room)

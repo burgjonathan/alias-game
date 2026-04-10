@@ -15,7 +15,7 @@ export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, o
   const team0 = room.players.filter(p => p.team === 0)
   const team1 = room.players.filter(p => p.team === 1)
   const unassigned = room.players.filter(p => p.team === null)
-  const canStart = team0.length >= 1 && team1.length >= 1
+  const canStart = team0.length >= 2 && team1.length >= 2
 
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}?code=${room.code}`
