@@ -22,7 +22,7 @@ const io = new Server(server, {
 })
 
 // Serve static frontend in production
-const distPath = path.join(__dirname, '..', 'dist')
+const distPath = path.join(__dirname, '..', '..', 'dist')
 app.use(express.static(distPath))
 app.get('/{*splat}', (_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'))
