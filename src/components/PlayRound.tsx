@@ -10,6 +10,7 @@ interface Props {
   roundSkipped: number
   onSkip: () => void
   onGuess: (text: string) => void
+  onClue: (text: string) => void
   guesses: GuessEntry[]
   // Video props
   localStream: MediaStream | null
@@ -25,11 +26,12 @@ interface Props {
 }
 
 export default function PlayRound({
-  word, amDescriber, timeLeft, roundCorrect, roundSkipped, onSkip, onGuess, guesses,
+  word, amDescriber, timeLeft, roundCorrect, roundSkipped, onSkip, onGuess, onClue, guesses,
   localStream, remoteStreams, activeSpeaker, describerId, myId, players,
   audioEnabled, videoEnabled, onToggleAudio, onToggleVideo,
 }: Props) {
   const timerClass = timeLeft <= 10 ? 'timer danger' : timeLeft <= 20 ? 'timer warning' : 'timer'
+  const amOnCurrentTeam = players.find(p => p.id === myId)?.team === players.find(p => p.id === describerId)?.team
 
   return (
     <div className="screen play-screen-v2">
@@ -72,8 +74,10 @@ export default function PlayRound({
 
       <GuessFeed
         guesses={guesses}
-        canGuess={!amDescriber && players.find(p => p.id === myId)?.team === players.find(p => p.id === describerId)?.team}
+        canGuess={!amDescriber && amOnCurrentTeam === true}
+        canDescribe={amDescriber}
         onGuess={onGuess}
+        onClue={onClue}
       />
     </div>
   )

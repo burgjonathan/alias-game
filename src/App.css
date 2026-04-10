@@ -682,6 +682,24 @@ body {
   color: var(--text-dim);
 }
 
+.guess-clue {
+  background: rgba(91, 155, 213, 0.12);
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.guess-input-describer {
+  border-color: rgba(91, 155, 213, 0.3);
+}
+
+.guess-input-describer:focus {
+  border-color: var(--blue);
+}
+
+.guess-send-describer {
+  background: linear-gradient(135deg, var(--blue), #4a8cc7);
+}
+
 .guess-name {
   font-weight: 700;
   white-space: nowrap;

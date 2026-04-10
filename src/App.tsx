@@ -75,7 +75,11 @@ function App() {
     })
 
     socket.on('guess-result', (result: { playerId: string; playerName: string; text: string; correct: boolean; word: string | null }) => {
-      setGuesses(prev => [...prev, { ...result, id: ++guessIdCounter }])
+      setGuesses(prev => [...prev, { ...result, id: ++guessIdCounter, type: 'guess' as const }])
+    })
+
+    socket.on('clue-result', (result: { playerId: string; playerName: string; text: string }) => {
+      setGuesses(prev => [...prev, { ...result, id: ++guessIdCounter, type: 'clue' as const, correct: false, word: null }])
     })
 
     socket.on('error-msg', ({ message }: { message: string }) => {
@@ -89,6 +93,7 @@ function App() {
       socket.off('word-update')
       socket.off('timer-tick')
       socket.off('guess-result')
+      socket.off('clue-result')
       socket.off('error-msg')
       socket.disconnect()
     }
@@ -120,6 +125,10 @@ function App() {
 
   const handleGuess = useCallback((text: string) => {
     socket.emit('guess', { text })
+  }, [])
+
+  const handleClue = useCallback((text: string) => {
+    socket.emit('clue', { text })
   }, [])
 
   const handleHome = () => {
@@ -179,6 +188,7 @@ function App() {
           roundSkipped={room.roundSkipped}
           onSkip={handleSkip}
           onGuess={handleGuess}
+          onClue={handleClue}
           guesses={guesses}
           localStream={webrtc.localStream}
           remoteStreams={webrtc.remoteStreams}

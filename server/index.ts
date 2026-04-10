@@ -201,6 +201,32 @@ io.on('connection', (socket) => {
     }
   })
 
+  // Describer sends text clues
+  socket.on('clue', ({ text }: { text: string }) => {
+    const roomId = socketRooms.get(socket.id)
+    if (!roomId) return
+    const room = getRoom(roomId)
+    if (!room || room.game.phase !== 'playing') return
+    if (socket.id !== room.game.describerId) return
+    const player = room.players.find(p => p.id === socket.id)
+    if (!player) return
+
+    // Check the clue doesn't contain the actual word
+    const currentWord = getCurrentWord(room)
+    const normalizedClue = text.replace(/[\u0591-\u05C7'"״׳]/g, '').trim().toLowerCase()
+    const normalizedWord = currentWord.replace(/[\u0591-\u05C7'"״׳]/g, '').trim().toLowerCase()
+    if (normalizedClue.includes(normalizedWord)) {
+      socket.emit('error-msg', { message: 'אסור להשתמש במילה עצמה!' })
+      return
+    }
+
+    io.to(room.id).emit('clue-result', {
+      playerId: socket.id,
+      playerName: player.name,
+      text,
+    })
+  })
+
   socket.on('word-skip', () => {
     const roomId = socketRooms.get(socket.id)
     if (!roomId) return
