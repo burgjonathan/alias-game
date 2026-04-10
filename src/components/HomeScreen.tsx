@@ -10,42 +10,53 @@ interface Props {
 
 type Mode = 'main' | 'join' | 'rules'
 
+const MIN_NAME = 2
+const MAX_NAME = 12
+
 function Rules({ onBack }: { onBack: () => void }) {
   return (
     <div className="screen home-screen">
       <h1 className="title" style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)' }}>ALIAS</h1>
       <div className="rules-card">
-        <h2 className="rules-title">איך משחקים?</h2>
+        <h2 className="rules-title">חוקי המשחק</h2>
 
         <div className="rules-section">
           <div className="rules-icon">👥</div>
           <div className="rules-text">
-            <strong>קבוצות</strong>
-            <p>מתחלקים ל-2 קבוצות, לפחות 2 שחקנים בכל קבוצה</p>
+            <strong>הכנה</strong>
+            <p>מתחלקים ל-2 קבוצות, לפחות 2 שחקנים בכל קבוצה. כל קבוצה מקבלת כלי משחק על לוח המשחק.</p>
           </div>
         </div>
 
         <div className="rules-section">
           <div className="rules-icon">🎯</div>
           <div className="rules-text">
-            <strong>המטרה</strong>
-            <p>להגיע ראשונים לסוף הלוח (משבצת 40)</p>
+            <strong>מטרת המשחק</strong>
+            <p>להגיע ראשונים לסוף הלוח! הקבוצה הראשונה שמגיעה למשבצת הסיום מנצחת.</p>
           </div>
         </div>
 
         <div className="rules-section">
           <div className="rules-icon">🗣️</div>
           <div className="rules-text">
-            <strong>המתאר</strong>
-            <p>בכל תור שחקן אחד מתאר מילים - בלי להגיד את המילה עצמה! אפשר רק לדלג</p>
+            <strong>איך מתארים</strong>
+            <p>המתאר מסביר מילים בעזרת מילים אחרות - מילים נרדפות, הפכים, רמזים. אפשר גם להקליד רמזים בצ׳אט.</p>
+          </div>
+        </div>
+
+        <div className="rules-section">
+          <div className="rules-icon">🚫</div>
+          <div className="rules-text">
+            <strong>מה אסור</strong>
+            <p>אסור להגיד את המילה עצמה או חלק ממנה! למשל אם המילה היא "שמש" אסור להגיד "שמשייה". אסור להשתמש בשפות זרות.</p>
           </div>
         </div>
 
         <div className="rules-section">
           <div className="rules-icon">💬</div>
           <div className="rules-text">
-            <strong>המנחשים</strong>
-            <p>שאר חברי הקבוצה מקלידים ניחושים. ניחוש נכון = צעד קדימה!</p>
+            <strong>ניחוש</strong>
+            <p>שאר חברי הקבוצה מקלידים ניחושים. כל מילה שנוחשה נכון = צעד אחד קדימה על הלוח!</p>
           </div>
         </div>
 
@@ -53,23 +64,31 @@ function Rules({ onBack }: { onBack: () => void }) {
           <div className="rules-icon">⏱️</div>
           <div className="rules-text">
             <strong>זמן</strong>
-            <p>לכל סיבוב יש 60 שניות. כשנגמר הזמן - עוברים לקבוצה השנייה</p>
+            <p>לכל סיבוב יש 60 שניות. כשנגמר הזמן סופרים את התוצאות ועוברים לקבוצה השנייה.</p>
           </div>
         </div>
 
         <div className="rules-section">
-          <div className="rules-icon">⚠️</div>
+          <div className="rules-icon">⬇️</div>
           <div className="rules-text">
-            <strong>דילוג = עונש</strong>
-            <p>כל דילוג מוריד צעד אחורה! אז תנסו לתאר גם מילים קשות</p>
+            <strong>דילוג = צעד אחורה</strong>
+            <p>מילה קשה מדי? אפשר לדלג, אבל כל דילוג מוריד את הקבוצה צעד אחורה על הלוח. אז כדאי לנסות!</p>
           </div>
         </div>
 
         <div className="rules-section">
-          <div className="rules-icon">📹</div>
+          <div className="rules-icon">📊</div>
           <div className="rules-text">
-            <strong>וידאו וקול</strong>
-            <p>המשחק כולל צ׳אט וידאו - כולם רואים ושומעים אחד את השני</p>
+            <strong>חישוב תזוזה</strong>
+            <p>בסוף כל סיבוב: מילים נכונות פחות דילוגים = מספר הצעדים על הלוח. אפשר גם לזוז אחורה!</p>
+          </div>
+        </div>
+
+        <div className="rules-section">
+          <div className="rules-icon">🏆</div>
+          <div className="rules-text">
+            <strong>ניצחון</strong>
+            <p>הקבוצה הראשונה שמגיעה למשבצת הסיום מנצחת את המשחק!</p>
           </div>
         </div>
       </div>
@@ -86,7 +105,13 @@ export default function HomeScreen({ connected, error, onCreateRoom, onFindPubli
   const [code, setCode] = useState('')
   const [mode, setMode] = useState<Mode>('main')
 
-  const validName = name.trim().length >= 1
+  const trimmedName = name.trim()
+  const validName = trimmedName.length >= MIN_NAME && trimmedName.length <= MAX_NAME
+  const nameError = trimmedName.length > 0 && trimmedName.length < MIN_NAME
+    ? `שם חייב להיות לפחות ${MIN_NAME} תווים`
+    : trimmedName.length > MAX_NAME
+    ? `שם יכול להיות עד ${MAX_NAME} תווים`
+    : ''
 
   if (mode === 'rules') {
     return <Rules onBack={() => setMode('main')} />
@@ -97,14 +122,18 @@ export default function HomeScreen({ connected, error, onCreateRoom, onFindPubli
       <div className="screen home-screen">
         <h1 className="title">ALIAS</h1>
 
-        <input
-          className="input"
-          type="text"
-          placeholder="השם שלך"
-          value={name}
-          onChange={e => setName(e.target.value)}
-          dir="rtl"
-        />
+        <div className="input-wrapper">
+          <input
+            className="input"
+            type="text"
+            placeholder="השם שלך (2-12 תווים)"
+            value={name}
+            onChange={e => setName(e.target.value.slice(0, MAX_NAME))}
+            dir="rtl"
+            maxLength={MAX_NAME}
+          />
+          {nameError && <p className="input-hint">{nameError}</p>}
+        </div>
 
         <input
           className="input"
@@ -120,7 +149,7 @@ export default function HomeScreen({ connected, error, onCreateRoom, onFindPubli
 
         <button
           className="btn btn-primary btn-large"
-          onClick={() => onJoinRoom(name.trim(), code.trim())}
+          onClick={() => onJoinRoom(trimmedName, code.trim())}
           disabled={!validName || code.trim().length < 5 || !connected}
         >
           הצטרף
@@ -138,20 +167,24 @@ export default function HomeScreen({ connected, error, onCreateRoom, onFindPubli
       <h1 className="title">ALIAS</h1>
       <p className="subtitle">משחק תיאור מילים</p>
 
-      <input
-        className="input"
-        type="text"
-        placeholder="השם שלך"
-        value={name}
-        onChange={e => setName(e.target.value)}
-        dir="rtl"
-      />
+      <div className="input-wrapper">
+        <input
+          className="input"
+          type="text"
+          placeholder="השם שלך (2-12 תווים)"
+          value={name}
+          onChange={e => setName(e.target.value.slice(0, MAX_NAME))}
+          dir="rtl"
+          maxLength={MAX_NAME}
+        />
+        {nameError && <p className="input-hint">{nameError}</p>}
+      </div>
 
       {error && <p className="error-text">{error}</p>}
 
       <button
         className="btn btn-primary btn-large"
-        onClick={() => onFindPublic(name.trim())}
+        onClick={() => onFindPublic(trimmedName)}
         disabled={!validName || !connected}
       >
         מצא משחק
@@ -160,7 +193,7 @@ export default function HomeScreen({ connected, error, onCreateRoom, onFindPubli
       <button
         className="btn btn-primary btn-large"
         style={{ background: 'linear-gradient(135deg, #2ecc71, #27ae60)' }}
-        onClick={() => onCreateRoom(name.trim(), false)}
+        onClick={() => onCreateRoom(trimmedName, false)}
         disabled={!validName || !connected}
       >
         צור חדר פרטי
