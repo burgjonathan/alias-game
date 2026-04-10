@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url'
 import {
   createRoom, findPublicRoom, joinRoom, getRoomByCode, getRoom,
   setPlayerTeam, setPlayerName, removePlayer, canStartGame,
-  startGame, startRound, getCurrentWord, wordCorrect, wordSkip,
-  endRound, nextTurn, resetGame, getTeamPlayers,
+  startGame, startRound, getCurrentWord, checkGuess, wordCorrect, wordSkip,
+  endRound, nextTurn, resetGame,
   type Room,
 } from './rooms.js'
 
@@ -165,14 +165,40 @@ io.on('connection', (socket) => {
     sendWordToDescriber(room)
   })
 
-  socket.on('word-correct', () => {
+  // Guess event: guessers submit guesses, server auto-checks
+  socket.on('guess', ({ text }: { text: string }) => {
     const roomId = socketRooms.get(socket.id)
     if (!roomId) return
     const room = getRoom(roomId)
-    if (!room || room.game.describerId !== socket.id) return
-    wordCorrect(room)
-    emitRoomState(room)
-    sendWordToDescriber(room)
+    if (!room || room.game.phase !== 'playing') return
+    // Only guessers on the current team can guess (not the describer)
+    if (socket.id === room.game.describerId) return
+    const player = room.players.find(p => p.id === socket.id)
+    if (!player || player.team !== room.game.currentTeam) return
+
+    const isCorrect = checkGuess(room, text)
+
+    if (isCorrect) {
+      const word = getCurrentWord(room)
+      wordCorrect(room)
+      io.to(room.id).emit('guess-result', {
+        playerId: socket.id,
+        playerName: player.name,
+        text,
+        correct: true,
+        word,
+      })
+      emitRoomState(room)
+      sendWordToDescriber(room)
+    } else {
+      io.to(room.id).emit('guess-result', {
+        playerId: socket.id,
+        playerName: player.name,
+        text,
+        correct: false,
+        word: null,
+      })
+    }
   })
 
   socket.on('word-skip', () => {
@@ -203,6 +229,19 @@ io.on('connection', (socket) => {
     emitRoomState(room)
   })
 
+  // WebRTC signaling relay
+  socket.on('webrtc-offer', ({ to, offer }: { to: string; offer: RTCSessionDescriptionInit }) => {
+    io.to(to).emit('webrtc-offer', { from: socket.id, offer })
+  })
+
+  socket.on('webrtc-answer', ({ to, answer }: { to: string; answer: RTCSessionDescriptionInit }) => {
+    io.to(to).emit('webrtc-answer', { from: socket.id, answer })
+  })
+
+  socket.on('webrtc-ice', ({ to, candidate }: { to: string; candidate: RTCIceCandidateInit }) => {
+    io.to(to).emit('webrtc-ice', { from: socket.id, candidate })
+  })
+
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`)
     const roomId = socketRooms.get(socket.id)
@@ -210,6 +249,7 @@ io.on('connection', (socket) => {
     const room = removePlayer(roomId, socket.id)
     socketRooms.delete(socket.id)
     if (room) {
+      io.to(room.id).emit('peer-disconnected', { peerId: socket.id })
       emitRoomState(room)
     }
   })

@@ -382,15 +382,23 @@ body {
   line-height: 1.6;
 }
 
-/* Play Screen */
-.play-screen {
-  justify-content: space-between;
-  padding-top: 3rem;
-  padding-bottom: 2rem;
+/* Play Screen v2 */
+.play-screen-v2 {
+  justify-content: flex-start;
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.play-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
 }
 
 .timer {
-  font-size: 3rem;
+  font-size: 2.2rem;
   font-weight: 900;
   color: var(--text);
   transition: color 0.3s;
@@ -412,15 +420,15 @@ body {
 
 .word-card {
   background: var(--card);
-  border-radius: 24px;
-  padding: 3rem 2rem;
+  border-radius: 18px;
+  padding: 1.5rem 1.5rem;
   width: 100%;
   max-width: 340px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .word {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
   direction: rtl;
 }
@@ -430,6 +438,176 @@ body {
   gap: 1rem;
   width: 100%;
   max-width: 340px;
+}
+
+.btn-skip-full {
+  width: 100%;
+  flex: none;
+}
+
+/* Video Display */
+.video-display {
+  width: 100%;
+  max-width: 380px;
+}
+
+.video-tiles {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.video-tile {
+  position: relative;
+  width: 120px;
+  height: 90px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+  border: 2px solid transparent;
+}
+
+.video-tile-active {
+  border-color: var(--green);
+  box-shadow: 0 0 8px rgba(39, 174, 96, 0.4);
+}
+
+.video-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  background: var(--darker);
+}
+
+.video-label {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.65rem;
+  color: white;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 4px;
+  direction: rtl;
+}
+
+.video-controls {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 4px;
+}
+
+.video-control-btn {
+  background: var(--card);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.video-control-btn.off {
+  background: var(--red);
+}
+
+/* Guess Feed */
+.guess-feed-container {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.guess-feed {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0.3rem;
+  min-height: 60px;
+  max-height: 120px;
+}
+
+.guess-entry {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  direction: rtl;
+}
+
+.guess-correct {
+  background: rgba(39, 174, 96, 0.2);
+  color: var(--green);
+  font-weight: 700;
+}
+
+.guess-wrong {
+  color: var(--text-dim);
+}
+
+.guess-name {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.guess-input-bar {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.guess-input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  border: 2px solid var(--card);
+  background: var(--darker);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.guess-input:focus {
+  border-color: var(--blue);
+}
+
+.guess-input::placeholder {
+  color: var(--text-dim);
+}
+
+.guess-send-btn {
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--blue);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 /* Summary Screen */

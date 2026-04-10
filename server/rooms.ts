@@ -178,6 +178,20 @@ export function getCurrentWord(room: Room): string {
   return room.game.words[room.game.wordIndex]
 }
 
+// Normalize Hebrew text for comparison: strip nikud, trim, lowercase
+export function normalizeWord(w: string): string {
+  return w
+    .replace(/[\u0591-\u05C7]/g, '') // strip nikud/cantillation
+    .replace(/['"״׳]/g, '')          // strip quotes
+    .trim()
+    .toLowerCase()
+}
+
+export function checkGuess(room: Room, guess: string): boolean {
+  const word = getCurrentWord(room)
+  return normalizeWord(guess) === normalizeWord(word)
+}
+
 export function wordCorrect(room: Room): void {
   room.game.roundCorrect++
   room.game.wordIndex++

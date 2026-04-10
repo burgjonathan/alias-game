@@ -1,23 +1,57 @@
+import VideoDisplay from './VideoDisplay'
+import GuessFeed, { type GuessEntry } from './GuessFeed'
+import { Player } from '../App'
+
 interface Props {
   word: string | null
   amDescriber: boolean
   timeLeft: number
   roundCorrect: number
   roundSkipped: number
-  onCorrect: () => void
   onSkip: () => void
+  onGuess: (text: string) => void
+  guesses: GuessEntry[]
+  // Video props
+  localStream: MediaStream | null
+  remoteStreams: Map<string, MediaStream>
+  activeSpeaker: string | null
+  describerId: string | null
+  myId: string
+  players: Player[]
+  audioEnabled: boolean
+  videoEnabled: boolean
+  onToggleAudio: () => void
+  onToggleVideo: () => void
 }
 
-export default function PlayRound({ word, amDescriber, timeLeft, roundCorrect, roundSkipped, onCorrect, onSkip }: Props) {
+export default function PlayRound({
+  word, amDescriber, timeLeft, roundCorrect, roundSkipped, onSkip, onGuess, guesses,
+  localStream, remoteStreams, activeSpeaker, describerId, myId, players,
+  audioEnabled, videoEnabled, onToggleAudio, onToggleVideo,
+}: Props) {
   const timerClass = timeLeft <= 10 ? 'timer danger' : timeLeft <= 20 ? 'timer warning' : 'timer'
 
   return (
-    <div className="screen play-screen">
-      <div className={timerClass}>{timeLeft}</div>
+    <div className="screen play-screen-v2">
+      <VideoDisplay
+        localStream={localStream}
+        remoteStreams={remoteStreams}
+        activeSpeaker={activeSpeaker}
+        describerId={describerId}
+        myId={myId}
+        players={players}
+        audioEnabled={audioEnabled}
+        videoEnabled={videoEnabled}
+        onToggleAudio={onToggleAudio}
+        onToggleVideo={onToggleVideo}
+      />
 
-      <div className="round-live-score">
-        <span className="live-correct">+{roundCorrect}</span>
-        <span className="live-skip">-{roundSkipped}</span>
+      <div className="play-header">
+        <div className={timerClass}>{timeLeft}</div>
+        <div className="round-live-score">
+          <span className="live-correct">+{roundCorrect}</span>
+          <span className="live-skip">-{roundSkipped}</span>
+        </div>
       </div>
 
       <div className="word-card">
@@ -30,18 +64,17 @@ export default function PlayRound({ word, amDescriber, timeLeft, roundCorrect, r
 
       {amDescriber ? (
         <div className="actions">
-          <button className="btn btn-skip" onClick={onSkip}>
+          <button className="btn btn-skip btn-skip-full" onClick={onSkip}>
             דלג
           </button>
-          <button className="btn btn-correct" onClick={onCorrect}>
-            נכון!
-          </button>
         </div>
-      ) : (
-        <p className="status-text">
-          {word === null ? 'נחשו את המילה!' : ''}
-        </p>
-      )}
+      ) : null}
+
+      <GuessFeed
+        guesses={guesses}
+        canGuess={!amDescriber && players.find(p => p.id === myId)?.team === players.find(p => p.id === describerId)?.team}
+        onGuess={onGuess}
+      />
     </div>
   )
 }

@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { socket } from './socket'
+import { useWebRTC } from './hooks/useWebRTC'
 import HomeScreen from './components/HomeScreen'
 import Lobby from './components/Lobby'
 import GameScreen from './components/GameScreen'
 import PlayRound from './components/PlayRound'
 import RoundSummary from './components/RoundSummary'
 import GameOver from './components/GameOver'
+import type { GuessEntry } from './components/GuessFeed'
 
 export const BOARD_SIZE = 40
 export const TEAM_NAMES = ['קבוצה 1', 'קבוצה 2'] as const
@@ -32,13 +34,19 @@ export interface RoomState {
   timeLeft: number
 }
 
+let guessIdCounter = 0
+
 function App() {
   const [connected, setConnected] = useState(false)
   const [room, setRoom] = useState<RoomState | null>(null)
   const [currentWord, setCurrentWord] = useState<string | null>(null)
-  const [myName, setMyName] = useState('')
   const [error, setError] = useState('')
   const [timeLeft, setTimeLeft] = useState(60)
+  const [guesses, setGuesses] = useState<GuessEntry[]>([])
+
+  const playerIds = room?.players.map(p => p.id) ?? []
+  const inRoom = room !== null && room.phase !== 'lobby'
+  const webrtc = useWebRTC(socket, playerIds, socket.id, inRoom)
 
   useEffect(() => {
     socket.connect()
@@ -47,7 +55,13 @@ function App() {
     socket.on('disconnect', () => setConnected(false))
 
     socket.on('room-state', (state: RoomState) => {
-      setRoom(state)
+      setRoom(prev => {
+        // Clear guesses when phase changes to playing (new round)
+        if (prev?.phase !== 'playing' && state.phase === 'playing') {
+          setGuesses([])
+        }
+        return state
+      })
       setTimeLeft(state.timeLeft)
       setError('')
     })
@@ -60,6 +74,10 @@ function App() {
       setTimeLeft(t)
     })
 
+    socket.on('guess-result', (result: { playerId: string; playerName: string; text: string; correct: boolean; word: string | null }) => {
+      setGuesses(prev => [...prev, { ...result, id: ++guessIdCounter }])
+    })
+
     socket.on('error-msg', ({ message }: { message: string }) => {
       setError(message)
     })
@@ -70,28 +88,23 @@ function App() {
       socket.off('room-state')
       socket.off('word-update')
       socket.off('timer-tick')
+      socket.off('guess-result')
       socket.off('error-msg')
       socket.disconnect()
     }
   }, [])
 
-  const isMe = (id: string) => socket.id === id
-  const amHost = room?.players.find(p => p.id === socket.id)?.isHost ?? false
-  const myTeam = room?.players.find(p => p.id === socket.id)?.team ?? null
   const amDescriber = room?.describerId === socket.id
 
   const handleCreateRoom = (name: string, isPublic: boolean) => {
-    setMyName(name)
     socket.emit('create-room', { name, isPublic })
   }
 
   const handleFindPublic = (name: string) => {
-    setMyName(name)
     socket.emit('find-public-room', { name })
   }
 
   const handleJoinRoom = (name: string, code: string) => {
-    setMyName(name)
     socket.emit('join-room', { code, name })
   }
 
@@ -99,39 +112,25 @@ function App() {
     socket.emit('join-team', { team })
   }
 
-  const handleStartGame = () => {
-    socket.emit('start-game')
-  }
+  const handleStartGame = () => socket.emit('start-game')
+  const handleStartRound = () => socket.emit('start-round')
+  const handleSkip = () => socket.emit('word-skip')
+  const handleNextTurn = () => socket.emit('next-turn')
+  const handlePlayAgain = () => socket.emit('play-again')
 
-  const handleStartRound = () => {
-    socket.emit('start-round')
-  }
-
-  const handleCorrect = () => {
-    socket.emit('word-correct')
-  }
-
-  const handleSkip = () => {
-    socket.emit('word-skip')
-  }
-
-  const handleNextTurn = () => {
-    socket.emit('next-turn')
-  }
-
-  const handlePlayAgain = () => {
-    socket.emit('play-again')
-  }
+  const handleGuess = useCallback((text: string) => {
+    socket.emit('guess', { text })
+  }, [])
 
   const handleHome = () => {
     socket.disconnect()
     setRoom(null)
     setCurrentWord(null)
     setError('')
+    setGuesses([])
     setTimeout(() => socket.connect(), 100)
   }
 
-  // Not in a room yet — show home
   if (!room) {
     return (
       <div className="app">
@@ -145,6 +144,9 @@ function App() {
       </div>
     )
   }
+
+  const myTeam = room.players.find(p => p.id === socket.id)?.team ?? null
+  const amHost = room.players.find(p => p.id === socket.id)?.isHost ?? false
 
   return (
     <div className="app">
@@ -175,22 +177,26 @@ function App() {
           timeLeft={timeLeft}
           roundCorrect={room.roundCorrect}
           roundSkipped={room.roundSkipped}
-          onCorrect={handleCorrect}
           onSkip={handleSkip}
+          onGuess={handleGuess}
+          guesses={guesses}
+          localStream={webrtc.localStream}
+          remoteStreams={webrtc.remoteStreams}
+          activeSpeaker={webrtc.activeSpeaker}
+          describerId={room.describerId}
+          myId={socket.id!}
+          players={room.players}
+          audioEnabled={webrtc.audioEnabled}
+          videoEnabled={webrtc.videoEnabled}
+          onToggleAudio={webrtc.toggleAudio}
+          onToggleVideo={webrtc.toggleVideo}
         />
       )}
       {room.phase === 'summary' && (
-        <RoundSummary
-          room={room}
-          onNext={handleNextTurn}
-        />
+        <RoundSummary room={room} onNext={handleNextTurn} />
       )}
       {room.phase === 'gameover' && (
-        <GameOver
-          room={room}
-          onPlayAgain={handlePlayAgain}
-          onHome={handleHome}
-        />
+        <GameOver room={room} onPlayAgain={handlePlayAgain} onHome={handleHome} />
       )}
     </div>
   )
