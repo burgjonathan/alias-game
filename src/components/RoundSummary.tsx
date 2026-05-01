@@ -9,15 +9,14 @@ interface Props {
 
 export default function RoundSummary({ room, onNext }: Props) {
   const currentTeam = room.currentTeam
-  const otherTeam = currentTeam === 0 ? 1 : 0
+  const nextTeam = (currentTeam + 1) % room.numTeams
   const net = room.roundCorrect - room.roundSkipped
 
-  const fromPos = Math.max(0, Math.min(BOARD_SIZE, room.positions[currentTeam] - net))
-  const startPositions: [number, number] = currentTeam === 0
-    ? [fromPos, room.positions[1]]
-    : [room.positions[0], fromPos]
+  const startPositions: number[] = room.positions.map((pos, i) =>
+    i === currentTeam ? Math.max(0, Math.min(BOARD_SIZE, pos - net)) : pos
+  )
 
-  const [displayPositions, setDisplayPositions] = useState<[number, number]>(startPositions)
+  const [displayPositions, setDisplayPositions] = useState<number[]>(startPositions)
 
   useEffect(() => {
     const t = setTimeout(() => setDisplayPositions(room.positions), 400)
@@ -49,7 +48,7 @@ export default function RoundSummary({ room, onNext }: Props) {
       <Board positions={displayPositions} />
 
       <button className="btn btn-primary btn-large" onClick={onNext}>
-        <span style={{ color: TEAM_COLORS[otherTeam] }}>התור של {TEAM_NAMES[otherTeam]}</span>
+        <span style={{ color: TEAM_COLORS[nextTeam] }}>התור של {TEAM_NAMES[nextTeam]}</span>
       </button>
     </div>
   )

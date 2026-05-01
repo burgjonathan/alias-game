@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react'
 import { BOARD_SIZE, TEAM_COLORS } from '../App'
 
 interface Props {
-  positions: [number, number]
+  positions: number[]
 }
 
 const COLS = 8
@@ -42,23 +42,30 @@ type AnimState = { cell: number; key: number } | null
 
 export default function Board({ positions }: Props) {
   const boardRef = useRef<HTMLDivElement>(null)
-  const prevPositions = useRef<[number, number]>(positions)
-  const timers = useRef<{ [team: number]: ReturnType<typeof setTimeout>[] }>({ 0: [], 1: [] })
+  const prevPositions = useRef<number[]>(positions)
+  const timers = useRef<Map<number, ReturnType<typeof setTimeout>[]>>(new Map())
 
-  const [anim0, setAnim0] = useState<AnimState>(null)
-  const [anim1, setAnim1] = useState<AnimState>(null)
+  const [anims, setAnims] = useState<AnimState[]>(() => positions.map(() => null))
+
+  useEffect(() => {
+    if (anims.length !== positions.length) {
+      setAnims(positions.map((_, i) => anims[i] ?? null))
+    }
+  }, [positions.length, anims.length])
 
   useEffect(() => {
     const prev = prevPositions.current
     prevPositions.current = positions
 
-    const runners: Array<{ team: 0 | 1; from: number; to: number }> = []
-    if (prev[0] !== positions[0]) runners.push({ team: 0, from: prev[0], to: positions[0] })
-    if (prev[1] !== positions[1]) runners.push({ team: 1, from: prev[1], to: positions[1] })
+    positions.forEach((to, team) => {
+      const from = prev[team]
+      if (from === undefined || from === to) return
 
-    runners.forEach(({ team, from, to }) => {
-      const setAnim = team === 0 ? setAnim0 : setAnim1
-      const teamTimers = timers.current[team]
+      let teamTimers = timers.current.get(team)
+      if (!teamTimers) {
+        teamTimers = []
+        timers.current.set(team, teamTimers)
+      }
       teamTimers.forEach(clearTimeout)
       teamTimers.length = 0
 
@@ -66,27 +73,39 @@ export default function Board({ positions }: Props) {
       const cells: number[] = []
       for (let c = from + step; c !== to + step; c += step) cells.push(c)
 
-      // Lift off from the starting cell
-      setAnim({ cell: from, key: 0 })
+      setAnims(prev => {
+        const next = [...prev]
+        while (next.length <= team) next.push(null)
+        next[team] = { cell: from, key: 0 }
+        return next
+      })
 
       cells.forEach((cell, i) => {
         const t = setTimeout(() => {
-          setAnim({ cell, key: i + 1 })
+          setAnims(prev => {
+            const next = [...prev]
+            next[team] = { cell, key: i + 1 }
+            return next
+          })
         }, (i + 1) * HOP_MS)
-        teamTimers.push(t)
+        teamTimers!.push(t)
       })
 
-      // Clear overlay after the last hop lands
       const done = setTimeout(() => {
-        setAnim(null)
+        setAnims(prev => {
+          const next = [...prev]
+          next[team] = null
+          return next
+        })
       }, (cells.length + 1) * HOP_MS)
       teamTimers.push(done)
     })
   }, [positions])
 
   useEffect(() => {
+    const all = timers.current
     return () => {
-      Object.values(timers.current).forEach(arr => arr.forEach(clearTimeout))
+      all.forEach(arr => arr.forEach(clearTimeout))
     }
   }, [])
 
@@ -136,20 +155,24 @@ export default function Board({ positions }: Props) {
             const isStart = cellIdx === 0
             const isFinish = cellIdx === BOARD_SIZE
             const steal = isStealSpace(cellIdx)
-            const team0Here = positions[0] === cellIdx && !anim0
-            const team1Here = positions[1] === cellIdx && !anim1
 
             let cellClass = 'board-cell'
             if (isStart) cellClass += ' cell-start'
             if (isFinish) cellClass += ' cell-finish'
             if (steal) cellClass += ' cell-steal'
 
+            const teamsHere: number[] = []
+            positions.forEach((pos, team) => {
+              if (pos === cellIdx && !anims[team]) teamsHere.push(team)
+            })
+
             return (
               <div key={cellIdx} className={cellClass} data-cell={cellIdx}>
                 <span className="cell-label">{getCellLabel(cellIdx)}</span>
                 <div className="cell-tokens">
-                  {team0Here && <Pawn color={TEAM_COLORS[0]} />}
-                  {team1Here && <Pawn color={TEAM_COLORS[1]} />}
+                  {teamsHere.map(team => (
+                    <Pawn key={team} color={TEAM_COLORS[team]} size={positions.length > 2 ? 18 : 22} />
+                  ))}
                 </div>
               </div>
             )
@@ -159,8 +182,9 @@ export default function Board({ positions }: Props) {
           ))}
         </div>
       ))}
-      {overlayFor(anim0, TEAM_COLORS[0])}
-      {overlayFor(anim1, TEAM_COLORS[1])}
+      {anims.map((anim, team) => (
+        <div key={team}>{overlayFor(anim, TEAM_COLORS[team])}</div>
+      ))}
     </div>
   )
 }

@@ -1,21 +1,35 @@
-import { RoomState, TEAM_NAMES, TEAM_COLORS } from '../App'
+import { RoomState, TEAM_NAMES, TEAM_COLORS, MAX_TEAMS, MAX_PLAYERS_PER_TEAM } from '../App'
 
 interface Props {
   room: RoomState
   myId: string
   amHost: boolean
-  myTeam: 0 | 1 | null
+  myTeam: number | null
   error: string
-  onJoinTeam: (team: 0 | 1) => void
+  onJoinTeam: (team: number) => void
   onStartGame: () => void
   onHome: () => void
 }
 
+const TIMER_LABELS: Record<NonNullable<RoomState['lobbyTimer']>['kind'], string> = {
+  start: 'המשחק מתחיל בעוד',
+  rebalance: 'איזון קבוצות בעוד',
+  autoassign: 'בחירה אוטומטית בעוד',
+}
+
 export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, onStartGame, onHome }: Props) {
-  const team0 = room.players.filter(p => p.team === 0)
-  const team1 = room.players.filter(p => p.team === 1)
+  const teams: { idx: number; players: typeof room.players }[] = []
+  for (let i = 0; i < room.numTeams; i++) {
+    teams.push({ idx: i, players: room.players.filter(p => p.team === i) })
+  }
   const unassigned = room.players.filter(p => p.team === null)
-  const canStart = team0.length >= 2 && team1.length >= 2
+
+  const teamSizes = teams.map(t => t.players.length).filter(n => n > 0)
+  const teamsWithEnough = teamSizes.filter(s => s >= 2).length
+  const allValidSize = teamSizes.every(s => s >= 2)
+  const canStartPrivate = teamsWithEnough >= 2 && allValidSize && unassigned.length === 0
+
+  const canCreateTeam = !room.isPublic && room.numTeams < MAX_TEAMS
 
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}?code=${room.code}`
@@ -31,57 +45,65 @@ export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, o
 
   return (
     <div className="screen lobby-screen">
-      <h2>חדר משחק</h2>
+      <h2>{room.isPublic ? 'משחק ציבורי' : 'חדר משחק'}</h2>
 
-      <div className="room-code-box">
-        <span className="room-code-label">קוד חדר:</span>
-        <span className="room-code">{room.code}</span>
-        <button className="btn btn-small" onClick={handleShare}>שתף</button>
+      {!room.isPublic && (
+        <div className="room-code-box">
+          <span className="room-code-label">קוד חדר:</span>
+          <span className="room-code">{room.code}</span>
+          <button className="btn btn-small" onClick={handleShare}>שתף</button>
+        </div>
+      )}
+
+      {room.lobbyTimer && (
+        <div className={`lobby-timer lobby-timer-${room.lobbyTimer.kind}`}>
+          <span>{TIMER_LABELS[room.lobbyTimer.kind]}</span>
+          <span className="lobby-timer-seconds">{room.lobbyTimer.secondsLeft}s</span>
+        </div>
+      )}
+
+      <div className="teams-grid">
+        {teams.map(({ idx, players }) => {
+          const color = TEAM_COLORS[idx]
+          const full = players.length >= MAX_PLAYERS_PER_TEAM
+          const showJoin = !room.isPublic && myTeam !== idx && !full
+          return (
+            <div key={idx} className="team-column">
+              <h3 style={{ color }}>{TEAM_NAMES[idx]}</h3>
+              <div className="team-meta">{players.length} / {MAX_PLAYERS_PER_TEAM}</div>
+              <div className="team-players">
+                {players.map(p => (
+                  <div key={p.id} className={`player-tag ${p.id === myId ? 'me' : ''}`}>
+                    {p.name} {p.isHost ? '👑' : ''}
+                  </div>
+                ))}
+              </div>
+              {showJoin && (
+                <button
+                  className="btn btn-small"
+                  style={{ background: color }}
+                  onClick={() => onJoinTeam(idx)}
+                >
+                  הצטרף
+                </button>
+              )}
+            </div>
+          )
+        })}
+
+        {canCreateTeam && (
+          <div className="team-column team-column-add">
+            <button
+              className="btn btn-add-team"
+              onClick={() => onJoinTeam(room.numTeams)}
+            >
+              + קבוצה חדשה
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className="teams-container">
-        <div className="team-column">
-          <h3 style={{ color: TEAM_COLORS[0] }}>{TEAM_NAMES[0]}</h3>
-          <div className="team-players">
-            {team0.map(p => (
-              <div key={p.id} className={`player-tag ${p.id === myId ? 'me' : ''}`}>
-                {p.name} {p.isHost ? '👑' : ''}
-              </div>
-            ))}
-          </div>
-          {myTeam !== 0 && (
-            <button
-              className="btn btn-small"
-              style={{ background: TEAM_COLORS[0] }}
-              onClick={() => onJoinTeam(0)}
-            >
-              הצטרף
-            </button>
-          )}
-        </div>
-
-        <div className="team-column">
-          <h3 style={{ color: TEAM_COLORS[1] }}>{TEAM_NAMES[1]}</h3>
-          <div className="team-players">
-            {team1.map(p => (
-              <div key={p.id} className={`player-tag ${p.id === myId ? 'me' : ''}`}>
-                {p.name} {p.isHost ? '👑' : ''}
-              </div>
-            ))}
-          </div>
-          {myTeam !== 1 && (
-            <button
-              className="btn btn-small"
-              style={{ background: TEAM_COLORS[1] }}
-              onClick={() => onJoinTeam(1)}
-            >
-              הצטרף
-            </button>
-          )}
-        </div>
-      </div>
-
-      {unassigned.length > 0 && (
+      {!room.isPublic && unassigned.length > 0 && (
         <div className="unassigned">
           <span className="unassigned-label">ממתינים: </span>
           {unassigned.map(p => (
@@ -92,13 +114,19 @@ export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, o
 
       {error && <p className="error-text">{error}</p>}
 
-      {amHost ? (
+      {room.isPublic ? (
+        <p className="status-text">
+          {room.lobbyTimer?.kind === 'start'
+            ? 'התחלת משחק...'
+            : 'מחכים לאיזון הקבוצות...'}
+        </p>
+      ) : amHost ? (
         <button
           className="btn btn-primary btn-large"
           onClick={onStartGame}
-          disabled={!canStart}
+          disabled={!canStartPrivate}
         >
-          {canStart ? 'התחל משחק!' : 'ממתין לשחקנים...'}
+          {canStartPrivate ? 'התחל משחק!' : 'ממתין לשחקנים...'}
         </button>
       ) : (
         <p className="status-text">ממתין למארח להתחיל...</p>

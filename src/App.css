@@ -304,6 +304,74 @@ body {
   max-width: var(--max-w);
 }
 
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.7rem;
+  width: 100%;
+  max-width: var(--max-w);
+}
+
+.team-meta {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.team-column-add {
+  border-style: dashed;
+  background: transparent;
+  justify-content: center;
+}
+
+.btn-add-team {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 1rem;
+  width: 100%;
+  cursor: pointer;
+}
+
+.btn-add-team:hover {
+  color: var(--text);
+}
+
+.lobby-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--card);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(122, 134, 158, 0.15);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.lobby-timer-start {
+  border-color: rgba(46, 204, 113, 0.5);
+  background: rgba(46, 204, 113, 0.08);
+}
+
+.lobby-timer-rebalance {
+  border-color: rgba(241, 196, 15, 0.5);
+  background: rgba(241, 196, 15, 0.08);
+}
+
+.lobby-timer-autoassign {
+  border-color: rgba(155, 89, 182, 0.5);
+  background: rgba(155, 89, 182, 0.08);
+}
+
+.lobby-timer-seconds {
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
 .team-column {
   flex: 1;
   background: var(--card);

@@ -10,28 +10,39 @@ import GameOver from './components/GameOver'
 import type { GuessEntry } from './components/GuessFeed'
 
 export const BOARD_SIZE = 40
-export const TEAM_NAMES = ['קבוצה 1', 'קבוצה 2'] as const
-export const TEAM_COLORS = ['#3498db', '#e67e22'] as const
+export const MAX_TEAMS = 4
+export const MAX_PLAYERS_PER_TEAM = 4
+export const TEAM_NAMES = ['קבוצה 1', 'קבוצה 2', 'קבוצה 3', 'קבוצה 4'] as const
+export const TEAM_COLORS = ['#3498db', '#e67e22', '#27ae60', '#9b59b6'] as const
+
+export type TeamIdx = 0 | 1 | 2 | 3
 
 export interface Player {
   id: string
   name: string
-  team: 0 | 1 | null
+  team: TeamIdx | null
   isHost: boolean
+}
+
+export interface LobbyTimerState {
+  kind: 'start' | 'rebalance' | 'autoassign'
+  secondsLeft: number
 }
 
 export interface RoomState {
   roomId: string
   code: string
   isPublic: boolean
+  numTeams: number
   players: Player[]
   phase: 'lobby' | 'game' | 'playing' | 'summary' | 'gameover'
-  positions: [number, number]
-  currentTeam: 0 | 1
+  positions: number[]
+  currentTeam: number
   roundCorrect: number
   roundSkipped: number
   describerId: string | null
   timeLeft: number
+  lobbyTimer: LobbyTimerState | null
 }
 
 let guessIdCounter = 0
@@ -113,7 +124,7 @@ function App() {
     socket.emit('join-room', { code, name })
   }
 
-  const handleJoinTeam = (team: 0 | 1) => {
+  const handleJoinTeam = (team: number) => {
     socket.emit('join-team', { team })
   }
 

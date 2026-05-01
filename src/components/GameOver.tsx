@@ -1,4 +1,4 @@
-import { RoomState, TEAM_NAMES, TEAM_COLORS } from '../App'
+import { RoomState, TEAM_NAMES, TEAM_COLORS, BOARD_SIZE } from '../App'
 import Board from './Board'
 
 interface Props {
@@ -8,7 +8,8 @@ interface Props {
 }
 
 export default function GameOver({ room, onPlayAgain, onHome }: Props) {
-  const winner = room.positions[0] >= 40 ? 0 : 1
+  const winner = room.positions.findIndex(p => p >= BOARD_SIZE)
+  if (winner < 0) return null
 
   return (
     <div className="screen gameover-screen">
