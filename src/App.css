@@ -439,19 +439,25 @@ body {
 }
 
 .buddy-star {
-  font-size: 1rem;
-  color: rgba(241, 196, 15, 0.4);
-  transition: color var(--transition), transform var(--transition);
+  font-size: 1.1rem;
+  color: rgba(241, 196, 15, 0.85);
+  transition: color var(--transition), transform var(--transition), background var(--transition);
   line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(241, 196, 15, 0.12);
+  flex-shrink: 0;
 }
 
 .player-tag.tappable:hover .buddy-star {
   color: #f1c40f;
-  transform: scale(1.15);
+  background: rgba(241, 196, 15, 0.25);
+  transform: scale(1.1);
 }
 
 .player-tag.buddied .buddy-star {
   color: #f1c40f;
+  background: rgba(241, 196, 15, 0.3);
 }
 
 .unassigned {
