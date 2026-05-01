@@ -162,22 +162,37 @@ export function setPlayerTeam(room: Room, playerId: string, team: number): boole
   return true
 }
 
-// Public-mode auto-assign: smallest team wins; if all at cap, create new team.
+// Public-mode auto-assign: bias toward more teams.
+// - If sizes differ, fill the smallest team (restore balance).
+// - If all equal and below MIN_PLAYERS_PER_TEAM, fill team 0 (drive toward MIN/team).
+// - If all equal and at MIN+, create a new team (preferred bias) when room allows.
+// - Fall back to filling team 0 only when at MAX_TEAMS.
 export function assignToBalancedTeam(room: Room, playerId: string): boolean {
   const player = room.players.find(p => p.id === playerId)
   if (!player) return false
 
   const sizes = teamSizes(room)
   const minSize = Math.min(...sizes)
+  const maxSize = Math.max(...sizes)
 
-  if (minSize >= MAX_PLAYERS_PER_TEAM) {
-    if (room.numTeams >= MAX_TEAMS) return false
+  if (minSize !== maxSize) {
+    player.team = sizes.indexOf(minSize) as TeamIdx
+    return true
+  }
+
+  if (minSize < MIN_PLAYERS_PER_TEAM) {
+    player.team = 0 as TeamIdx
+    return true
+  }
+
+  if (room.numTeams < MAX_TEAMS) {
     ensureTeamCapacity(room, room.numTeams + 1)
     player.team = (room.numTeams - 1) as TeamIdx
     return true
   }
 
-  player.team = sizes.indexOf(minSize) as TeamIdx
+  if (minSize >= MAX_PLAYERS_PER_TEAM) return false
+  player.team = 0 as TeamIdx
   return true
 }
 
@@ -262,8 +277,8 @@ function bestSplit(total: number): { nt: number; pt: number } | null {
     if (total % nt !== 0) continue
     const pt = total / nt
     if (pt < MIN_PLAYERS_PER_TEAM || pt > MAX_PLAYERS_PER_TEAM) continue
-    // Prefer larger perTeam (more meaningful teams).
-    if (!best || pt > best.pt) best = { nt, pt }
+    // Prefer more teams (bias toward smaller per-team counts).
+    if (!best || nt > best.nt) best = { nt, pt }
   }
   return best
 }
