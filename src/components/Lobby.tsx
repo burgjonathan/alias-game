@@ -7,6 +7,7 @@ interface Props {
   myTeam: number | null
   error: string
   onJoinTeam: (team: number) => void
+  onBuddy: (targetId: string | null) => void
   onStartGame: () => void
   onHome: () => void
 }
@@ -17,7 +18,9 @@ const TIMER_LABELS: Record<NonNullable<RoomState['lobbyTimer']>['kind'], string>
   autoassign: 'בחירה אוטומטית בעוד',
 }
 
-export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, onStartGame, onHome }: Props) {
+export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, onBuddy, onStartGame, onHome }: Props) {
+  const me = room.players.find(p => p.id === myId)
+  const myBuddyId = me?.buddyId ?? null
   const teams: { idx: number; players: typeof room.players }[] = []
   for (let i = 0; i < room.numTeams; i++) {
     teams.push({ idx: i, players: room.players.filter(p => p.team === i) })
@@ -72,11 +75,24 @@ export default function Lobby({ room, myId, amHost, myTeam, error, onJoinTeam, o
               <h3 style={{ color }}>{TEAM_NAMES[idx]}</h3>
               <div className="team-meta">{players.length} / {MAX_PLAYERS_PER_TEAM}</div>
               <div className="team-players">
-                {players.map(p => (
-                  <div key={p.id} className={`player-tag ${p.id === myId ? 'me' : ''}`}>
-                    {p.name} {p.isHost ? '👑' : ''}
-                  </div>
-                ))}
+                {players.map(p => {
+                  const isMe = p.id === myId
+                  const isMyBuddy = myBuddyId === p.id
+                  const buddiedByOthers = room.players.some(o => o.id !== myId && o.buddyId === p.id)
+                  return (
+                    <div
+                      key={p.id}
+                      className={`player-tag ${isMe ? 'me' : ''} ${!isMe ? 'tappable' : ''} ${isMyBuddy ? 'buddied' : ''}`}
+                      onClick={isMe ? undefined : () => onBuddy(isMyBuddy ? null : p.id)}
+                      title={isMe ? undefined : (isMyBuddy ? 'בטל בקשת זוגיות' : 'תרצה להיות עם שחקן זה')}
+                    >
+                      <span className="player-name">{p.name} {p.isHost ? '👑' : ''}</span>
+                      {!isMe && (
+                        <span className="buddy-star">{isMyBuddy ? '★' : (buddiedByOthers ? '✦' : '☆')}</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               {showJoin && (
                 <button

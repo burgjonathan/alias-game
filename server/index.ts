@@ -9,7 +9,7 @@ import {
   startGame, startRound, getCurrentWord, checkGuess, wordCorrect, wordSkip,
   endRound, nextTurn, resetGame,
   assignToBalancedTeam, autoAssignUnassigned, tryRebalance, isLobbyBalanced,
-  hasMinimumToPlay, compactEmptyTeams,
+  hasMinimumToPlay, compactEmptyTeams, setBuddy, satisfyBuddies,
   MIN_PLAYERS_PER_TEAM, START_COUNTDOWN_SECONDS, REBALANCE_SECONDS, AUTOASSIGN_SECONDS,
   type Room, type LobbyTimerKind,
 } from './rooms.js'
@@ -34,7 +34,7 @@ const socketRooms = new Map<string, string>()
 
 function emitRoomState(room: Room) {
   const publicPlayers = room.players.map(p => ({
-    id: p.id, name: p.name, team: p.team, isHost: p.isHost,
+    id: p.id, name: p.name, team: p.team, isHost: p.isHost, buddyId: p.buddyId,
   }))
 
   const lobbyTimer = room.lobbyTimer
@@ -85,6 +85,11 @@ function startLobbyTimer(room: Room, kind: LobbyTimerKind, seconds: number, onEx
   room.lobbyTimer = { kind, secondsLeft: seconds, intervalId }
 }
 
+function applyLobbyChange(room: Room) {
+  satisfyBuddies(room)
+  evaluateLobby(room)
+}
+
 function evaluateLobby(room: Room) {
   if (room.game.phase !== 'lobby') {
     cancelLobbyTimer(room)
@@ -104,7 +109,7 @@ function evaluateLobby(room: Room) {
       if (room.lobbyTimer?.kind === 'rebalance') return
       startLobbyTimer(room, 'rebalance', REBALANCE_SECONDS, () => {
         if (tryRebalance(room)) {
-          evaluateLobby(room)
+          applyLobbyChange(room)
         }
       })
     } else {
@@ -116,7 +121,7 @@ function evaluateLobby(room: Room) {
       if (room.lobbyTimer?.kind === 'autoassign') return
       startLobbyTimer(room, 'autoassign', AUTOASSIGN_SECONDS, () => {
         autoAssignUnassigned(room)
-        evaluateLobby(room)
+        applyLobbyChange(room)
       })
     } else {
       cancelLobbyTimer(room)
@@ -156,7 +161,7 @@ io.on('connection', (socket) => {
     socket.join(room.id)
     socketRooms.set(socket.id, room.id)
     if (isPublic) assignToBalancedTeam(room, socket.id)
-    evaluateLobby(room)
+    applyLobbyChange(room)
     emitRoomState(room)
   })
 
@@ -170,7 +175,7 @@ io.on('connection', (socket) => {
     socket.join(room.id)
     socketRooms.set(socket.id, room.id)
     assignToBalancedTeam(room, socket.id)
-    evaluateLobby(room)
+    applyLobbyChange(room)
     emitRoomState(room)
   })
 
@@ -192,7 +197,7 @@ io.on('connection', (socket) => {
     socket.join(room.id)
     socketRooms.set(socket.id, room.id)
     if (room.isPublic) assignToBalancedTeam(room, socket.id)
-    evaluateLobby(room)
+    applyLobbyChange(room)
     emitRoomState(room)
   })
 
@@ -218,7 +223,17 @@ io.on('connection', (socket) => {
       socket.emit('error-msg', { message: 'הקבוצה מלאה' })
       return
     }
-    evaluateLobby(room)
+    applyLobbyChange(room)
+    emitRoomState(room)
+  })
+
+  socket.on('buddy', ({ targetId }: { targetId: string | null }) => {
+    const roomId = socketRooms.get(socket.id)
+    if (!roomId) return
+    const room = getRoom(roomId)
+    if (!room || room.game.phase !== 'lobby') return
+    if (!setBuddy(room, socket.id, targetId)) return
+    applyLobbyChange(room)
     emitRoomState(room)
   })
 
@@ -337,7 +352,7 @@ io.on('connection', (socket) => {
     if (room.isPublic) {
       room.players.forEach(p => assignToBalancedTeam(room, p.id))
     }
-    evaluateLobby(room)
+    applyLobbyChange(room)
     emitRoomState(room)
   })
 
@@ -365,7 +380,7 @@ io.on('connection', (socket) => {
       if (room.isPublic && room.game.phase === 'lobby') {
         compactEmptyTeams(room)
       }
-      evaluateLobby(room)
+      applyLobbyChange(room)
       emitRoomState(room)
     }
   })

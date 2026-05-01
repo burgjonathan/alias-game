@@ -22,6 +22,7 @@ export interface Player {
   name: string
   team: TeamIdx | null
   isHost: boolean
+  buddyId: string | null
 }
 
 export interface LobbyTimerState {
@@ -128,6 +129,10 @@ function App() {
     socket.emit('join-team', { team })
   }
 
+  const handleBuddy = (targetId: string | null) => {
+    socket.emit('buddy', { targetId })
+  }
+
   const handleStartGame = () => socket.emit('start-game')
   const handleStartRound = () => socket.emit('start-round')
   const handleSkip = () => socket.emit('word-skip')
@@ -178,6 +183,7 @@ function App() {
           myTeam={myTeam}
           error={error}
           onJoinTeam={handleJoinTeam}
+          onBuddy={handleBuddy}
           onStartGame={handleStartGame}
           onHome={handleHome}
         />

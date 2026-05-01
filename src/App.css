@@ -420,6 +420,40 @@ body {
   padding: 0.25rem 0.5rem;
 }
 
+.player-tag.tappable {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  user-select: none;
+}
+
+.player-tag.tappable:hover {
+  border-color: rgba(241, 196, 15, 0.5);
+}
+
+.player-tag.buddied {
+  border-color: #f1c40f;
+  background: rgba(241, 196, 15, 0.12);
+}
+
+.buddy-star {
+  font-size: 1rem;
+  color: rgba(241, 196, 15, 0.4);
+  transition: color var(--transition), transform var(--transition);
+  line-height: 1;
+}
+
+.player-tag.tappable:hover .buddy-star {
+  color: #f1c40f;
+  transform: scale(1.15);
+}
+
+.player-tag.buddied .buddy-star {
+  color: #f1c40f;
+}
+
 .unassigned {
   color: var(--text-dim);
   font-size: 0.85rem;

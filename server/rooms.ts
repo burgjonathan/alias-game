@@ -7,6 +7,7 @@ export interface Player {
   name: string
   team: TeamIdx | null
   isHost: boolean
+  buddyId: string | null
 }
 
 export type Phase = 'lobby' | 'game' | 'playing' | 'summary' | 'gameover'
@@ -76,7 +77,7 @@ export function createRoom(hostId: string, hostName: string, isPublic: boolean):
     isPublic,
     host: hostId,
     numTeams,
-    players: [{ id: hostId, name: hostName, team: null, isHost: true }],
+    players: [{ id: hostId, name: hostName, team: null, isHost: true, buddyId: null }],
     game: {
       positions: Array(numTeams).fill(0),
       currentTeam: 0,
@@ -113,7 +114,7 @@ export function joinRoom(roomId: string, playerId: string, playerName: string): 
   const room = rooms.get(roomId)
   if (!room) return null
   if (room.players.find(p => p.id === playerId)) return room
-  room.players.push({ id: playerId, name: playerName, team: null, isHost: false })
+  room.players.push({ id: playerId, name: playerName, team: null, isHost: false, buddyId: null })
   return room
 }
 
@@ -189,6 +190,10 @@ export function removePlayer(roomId: string, playerId: string): Room | null {
   const room = rooms.get(roomId)
   if (!room) return null
   room.players = room.players.filter(p => p.id !== playerId)
+  // Clear any buddy references to the leaving player
+  room.players.forEach(p => {
+    if (p.buddyId === playerId) p.buddyId = null
+  })
 
   if (room.players.length === 0) {
     if (room.game.timerInterval) clearInterval(room.game.timerInterval)
@@ -303,6 +308,67 @@ export function autoAssignUnassigned(room: Room): void {
   const unassigned = room.players.filter(p => p.team === null)
   for (const p of unassigned) {
     assignToBalancedTeam(room, p.id)
+  }
+}
+
+export function setBuddy(room: Room, playerId: string, targetId: string | null): boolean {
+  const player = room.players.find(p => p.id === playerId)
+  if (!player) return false
+  if (targetId === playerId) return false
+  if (targetId !== null && !room.players.find(p => p.id === targetId)) return false
+  player.buddyId = targetId
+  return true
+}
+
+// Try once to bring `me` and their buddy onto the same team via a balance-preserving swap.
+function trySatisfyOne(room: Room, playerId: string): boolean {
+  const me = room.players.find(p => p.id === playerId)
+  if (!me || !me.buddyId) return false
+  const buddy = room.players.find(p => p.id === me.buddyId)
+  if (!buddy) return false
+  if (me.team === buddy.team) return true
+  if (me.team === null || buddy.team === null) return false
+
+  // For each direction (move me to buddy's team, or buddy to mine), look for a swap target.
+  const dirs: Array<{ mover: typeof me; toTeam: TeamIdx }> = [
+    { mover: me, toTeam: buddy.team },
+    { mover: buddy, toTeam: me.team },
+  ]
+
+  for (const { mover, toTeam } of dirs) {
+    const fromTeam = mover.team!
+    // X is on toTeam; swapping X to fromTeam must not break X's own buddy bond.
+    const candidates = room.players.filter(x =>
+      x.team === toTeam &&
+      x.id !== me.id &&
+      x.id !== buddy.id &&
+      // X's buddy (if any) is not currently on toTeam (otherwise swap separates them).
+      (() => {
+        if (!x.buddyId) return true
+        const xb = room.players.find(p => p.id === x.buddyId)
+        return !xb || xb.team !== toTeam
+      })()
+    )
+    if (candidates.length > 0) {
+      const x = candidates[0]
+      mover.team = toTeam
+      x.team = fromTeam
+      return true
+    }
+  }
+  return false
+}
+
+export function satisfyBuddies(room: Room): void {
+  // Iterate to handle chains (A→B, B→C). Bound iterations.
+  for (let iter = 0; iter < 5; iter++) {
+    let changed = false
+    for (const p of room.players) {
+      if (p.buddyId && trySatisfyOne(room, p.id)) {
+        changed = true
+      }
+    }
+    if (!changed) break
   }
 }
 
@@ -427,5 +493,5 @@ export function resetGame(room: Room): void {
   room.numTeams = 2
   room.game.positions = [0, 0]
   room.game.describerIndex = [0, 0]
-  room.players.forEach(p => { p.team = null })
+  room.players.forEach(p => { p.team = null; p.buddyId = null })
 }
