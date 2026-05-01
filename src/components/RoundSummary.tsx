@@ -1,4 +1,5 @@
-import { RoomState, TEAM_NAMES, TEAM_COLORS } from '../App'
+import { useState, useEffect } from 'react'
+import { RoomState, TEAM_NAMES, TEAM_COLORS, BOARD_SIZE } from '../App'
 import Board from './Board'
 
 interface Props {
@@ -10,6 +11,19 @@ export default function RoundSummary({ room, onNext }: Props) {
   const currentTeam = room.currentTeam
   const otherTeam = currentTeam === 0 ? 1 : 0
   const net = room.roundCorrect - room.roundSkipped
+
+  const fromPos = Math.max(0, Math.min(BOARD_SIZE, room.positions[currentTeam] - net))
+  const startPositions: [number, number] = currentTeam === 0
+    ? [fromPos, room.positions[1]]
+    : [room.positions[0], fromPos]
+
+  const [displayPositions, setDisplayPositions] = useState<[number, number]>(startPositions)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDisplayPositions(room.positions), 400)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="screen summary-screen">
@@ -32,7 +46,7 @@ export default function RoundSummary({ room, onNext }: Props) {
         </div>
       </div>
 
-      <Board positions={room.positions} />
+      <Board positions={displayPositions} />
 
       <button className="btn btn-primary btn-large" onClick={onNext}>
         <span style={{ color: TEAM_COLORS[otherTeam] }}>התור של {TEAM_NAMES[otherTeam]}</span>

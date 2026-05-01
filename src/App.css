@@ -448,23 +448,28 @@ body {
   justify-content: center;
 }
 
-/* Pawn walking animation */
-.pawn {
-  transition: transform 0.3s ease;
+/* Pawn hop animation */
+.pawn-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 10;
 }
 
-.pawn-walking {
-  animation: pawnWalk 0.6s ease-in-out;
+.pawn-hop {
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  animation: pawnHop 280ms ease-out;
 }
 
-@keyframes pawnWalk {
-  0% { transform: translateY(0) scale(1); }
-  15% { transform: translateY(-4px) rotate(-8deg) scale(1.1); }
-  30% { transform: translateY(0) rotate(0deg) scale(1); }
-  45% { transform: translateY(-4px) rotate(8deg) scale(1.1); }
-  60% { transform: translateY(0) rotate(0deg) scale(1); }
-  75% { transform: translateY(-3px) rotate(-5deg) scale(1.05); }
-  100% { transform: translateY(0) rotate(0deg) scale(1); }
+@keyframes pawnHop {
+  0%   { transform: translateY(0) scale(1); }
+  45%  { transform: translateY(-14px) scale(1.08); }
+  100% { transform: translateY(0) scale(1); }
 }
 
 /* ============ GAME SCREEN ============ */

@@ -6,14 +6,15 @@ interface Props {
 }
 
 const COLS = 8
+const HOP_MS = 280
 
-function Pawn({ color, size = 22, walking }: { color: string; size?: number; walking: boolean }) {
+function Pawn({ color, size = 22 }: { color: string; size?: number }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 100 120"
-      className={`pawn ${walking ? 'pawn-walking' : ''}`}
+      className="pawn"
       style={{ filter: `drop-shadow(0 2px 3px rgba(0,0,0,0.5))` }}
     >
       <ellipse cx="50" cy="110" rx="35" ry="10" fill={color} />
@@ -25,7 +26,6 @@ function Pawn({ color, size = 22, walking }: { color: string; size?: number; wal
   )
 }
 
-// Map cell index to pixel position on the board for overlay animation
 function getCellPosition(cellIdx: number, boardEl: HTMLDivElement | null): { x: number; y: number } | null {
   if (!boardEl) return null
   const cell = boardEl.querySelector(`[data-cell="${cellIdx}"]`) as HTMLElement | null
@@ -38,38 +38,57 @@ function getCellPosition(cellIdx: number, boardEl: HTMLDivElement | null): { x: 
   }
 }
 
+type AnimState = { cell: number; key: number } | null
+
 export default function Board({ positions }: Props) {
   const boardRef = useRef<HTMLDivElement>(null)
   const prevPositions = useRef<[number, number]>(positions)
-  const [animating, setAnimating] = useState<[boolean, boolean]>([false, false])
-  const [overlayPos, setOverlayPos] = useState<[{ x: number; y: number } | null, { x: number; y: number } | null]>([null, null])
+  const timers = useRef<{ [team: number]: ReturnType<typeof setTimeout>[] }>({ 0: [], 1: [] })
 
-  // Detect position changes and trigger animation
+  const [anim0, setAnim0] = useState<AnimState>(null)
+  const [anim1, setAnim1] = useState<AnimState>(null)
+
   useEffect(() => {
     const prev = prevPositions.current
-    const changed: [boolean, boolean] = [prev[0] !== positions[0], prev[1] !== positions[1]]
+    prevPositions.current = positions
 
-    if (changed[0] || changed[1]) {
-      // Animate each team that moved
-      setAnimating(changed)
+    const runners: Array<{ team: 0 | 1; from: number; to: number }> = []
+    if (prev[0] !== positions[0]) runners.push({ team: 0, from: prev[0], to: positions[0] })
+    if (prev[1] !== positions[1]) runners.push({ team: 1, from: prev[1], to: positions[1] })
 
-      // After animation ends, stop
-      const timeout = setTimeout(() => {
-        setAnimating([false, false])
-        prevPositions.current = positions
-      }, 600)
+    runners.forEach(({ team, from, to }) => {
+      const setAnim = team === 0 ? setAnim0 : setAnim1
+      const teamTimers = timers.current[team]
+      teamTimers.forEach(clearTimeout)
+      teamTimers.length = 0
 
-      return () => clearTimeout(timeout)
-    }
+      const step = from < to ? 1 : -1
+      const cells: number[] = []
+      for (let c = from + step; c !== to + step; c += step) cells.push(c)
+
+      // Lift off from the starting cell
+      setAnim({ cell: from, key: 0 })
+
+      cells.forEach((cell, i) => {
+        const t = setTimeout(() => {
+          setAnim({ cell, key: i + 1 })
+        }, (i + 1) * HOP_MS)
+        teamTimers.push(t)
+      })
+
+      // Clear overlay after the last hop lands
+      const done = setTimeout(() => {
+        setAnim(null)
+      }, (cells.length + 1) * HOP_MS)
+      teamTimers.push(done)
+    })
   }, [positions])
 
-  // Update overlay positions for animated pawns
   useEffect(() => {
-    if (!boardRef.current) return
-    const pos0 = getCellPosition(positions[0], boardRef.current)
-    const pos1 = getCellPosition(positions[1], boardRef.current)
-    setOverlayPos([pos0, pos1])
-  }, [positions])
+    return () => {
+      Object.values(timers.current).forEach(arr => arr.forEach(clearTimeout))
+    }
+  }, [])
 
   const rows: number[][] = []
   for (let i = 0; i <= BOARD_SIZE; i += COLS) {
@@ -84,11 +103,30 @@ export default function Board({ positions }: Props) {
 
   const getCellLabel = (idx: number): string => {
     if (idx === 0) return 'S'
-    if (idx === BOARD_SIZE) return '\u2605'
+    if (idx === BOARD_SIZE) return '★'
     return String(((idx - 1) % 8) + 1)
   }
 
   const isStealSpace = (idx: number) => idx > 0 && idx < BOARD_SIZE && idx % 8 === 0
+
+  const overlayFor = (anim: AnimState, color: string) => {
+    if (!anim) return null
+    const pos = getCellPosition(anim.cell, boardRef.current)
+    if (!pos) return null
+    return (
+      <div
+        className="pawn-overlay"
+        style={{
+          transform: `translate(${pos.x}px, ${pos.y}px)`,
+          transition: `transform ${HOP_MS}ms cubic-bezier(0.4, 0, 0.6, 1)`,
+        }}
+      >
+        <div key={anim.key} className="pawn-hop">
+          <Pawn color={color} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="board" ref={boardRef} style={{ position: 'relative' }}>
@@ -98,8 +136,8 @@ export default function Board({ positions }: Props) {
             const isStart = cellIdx === 0
             const isFinish = cellIdx === BOARD_SIZE
             const steal = isStealSpace(cellIdx)
-            const team0Here = positions[0] === cellIdx
-            const team1Here = positions[1] === cellIdx
+            const team0Here = positions[0] === cellIdx && !anim0
+            const team1Here = positions[1] === cellIdx && !anim1
 
             let cellClass = 'board-cell'
             if (isStart) cellClass += ' cell-start'
@@ -110,8 +148,8 @@ export default function Board({ positions }: Props) {
               <div key={cellIdx} className={cellClass} data-cell={cellIdx}>
                 <span className="cell-label">{getCellLabel(cellIdx)}</span>
                 <div className="cell-tokens">
-                  {team0Here && <Pawn color={TEAM_COLORS[0]} walking={animating[0]} />}
-                  {team1Here && <Pawn color={TEAM_COLORS[1]} walking={animating[1]} />}
+                  {team0Here && <Pawn color={TEAM_COLORS[0]} />}
+                  {team1Here && <Pawn color={TEAM_COLORS[1]} />}
                 </div>
               </div>
             )
@@ -121,6 +159,8 @@ export default function Board({ positions }: Props) {
           ))}
         </div>
       ))}
+      {overlayFor(anim0, TEAM_COLORS[0])}
+      {overlayFor(anim1, TEAM_COLORS[1])}
     </div>
   )
 }
